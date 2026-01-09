@@ -1,38 +1,215 @@
-.App {
+:root {
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --bg-main: #f8fafc;
+  --bg-card: #ffffff;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+}
+
+.main-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--bg-main);
+  overflow: hidden;
+}
+.height-input {
+  padding:10px;
+}
+.height-input input{
+  width: 14%;
+  border-radius: 10px;
+  padding: 2px;
+  
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.sidebar {
+  width: 360px;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  padding: 24px;
   display: flex;
   flex-direction: column;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.02);
+  z-index: 20;
+}
+
+.sidebar h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 24px;
+  letter-spacing: -0.025em;
+}
+
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+/* Wall Cards */
+.wall-card {
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.wall-card:focus-within {
+  border-color: var(--primary);
+  background: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.wall-header {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+  margin-bottom: 12px;
+}
+
+.wall-header strong {
+  color: var(--text-main);
+  font-size: 0.95rem;
+}
+
+.wall-header input {
+  width: 70px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.file-input {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  width: 100%;
+}
+
+/* Floor Selector */
+.floor-selector {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.color-chip {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.color-chip:hover {
+  transform: scale(1.1);
+}
+
+/* Buttons */
+.main-btn {
+  background: var(--primary);
   color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 10px;
 }
 
-.App-link {
-  color: #61dafb;
+.main-btn:hover {
+  background: var(--primary-hover);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.back-btn {
+  background: var(--border);
+  border: none;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+
+/* This is the parent div in App.js */
+.viewer-container {
+  flex: 1;
+  display: flex;
+  /* Added: Makes parent a flex container */
+  position: relative;
+  background: #c5c0c0;
+  /* Match the 3D background */
+}
+
+/* This is the placeholder div */
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  /* Stack icon and text vertically */
+  align-items: center;
+  /* Center horizontally */
+  justify-content: center;
+  /* Center vertically */
+  width: 100%;
+  /* Fill parent width */
+  height: 100%;
+  /* Fill parent height */
+  color: #000000;
+  /* Muted text color */
+  text-align: center;
+  padding: 20px;
+}
+
+.placeholder-icon {
+  font-size: 3rem;
+  /* Big house icon */
+  margin-bottom: 15px;
+  opacity: 0.6;
+  /* Makes it look subtle/modern */
+}
+
+/* Responsive Breakpoints */
+@media (max-width: 768px) {
+  .main-container {
+    flex-direction: column;
   }
-  to {
-    transform: rotate(360deg);
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    max-height: 45vh;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 16px;
+  }
+
+  .scroll-area {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 10px;
+  }
+
+  .wall-card {
+    min-width: 240px;
+    margin-bottom: 0;
   }
 }

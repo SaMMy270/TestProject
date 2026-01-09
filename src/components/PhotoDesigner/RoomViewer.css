@@ -1,0 +1,45 @@
+.viewer-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%);
+    touch-action: none;
+}
+
+.view-toggle-btn {
+    position: absolute;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    background: rgba(255, 255, 255, 0.95);
+    color: #1e293b;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 100px;
+    font-weight: 800;
+    font-size: 0.85rem;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(8px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.view-toggle-btn:hover {
+    transform: translateX(-50%) translateY(-2px);
+    background: white;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+}
+
+.view-toggle-btn:active {
+    transform: translateX(-50%) scale(0.95);
+}
+
+/* Hide Three.js canvas focus outline */
+canvas {
+    outline: none;
+}
