@@ -2,7 +2,7 @@ import React, { Suspense, useMemo, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, useTexture, PerspectiveCamera, Grid } from "@react-three/drei";
 import * as THREE from "three";
-import './RoomViewer.css'; // 1. Import the new modern CSS
+import './RoomViewer.css'; 
 
 function Wall({ url, width, height, position, rotation, offset }) {
   const texture = useTexture(url);
