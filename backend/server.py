@@ -8,7 +8,8 @@ from typing import List
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-
+from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
 # Fix for some OpenCV versions (from your image_processing.py)
 cv2.ocl.setUseOpenCL(False)
 
@@ -27,7 +28,21 @@ OUTPUT_DIR = "output"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-app.mount("/output", StaticFiles(directory=OUTPUT_DIR), name="output")
+
+# 1. Create a custom class to force CORS headers on images
+class CORSStaticFiles(StaticFiles):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+
+# 2. Replace your old app.mount with this one:
+app.mount("/output", CORSStaticFiles(directory=OUTPUT_DIR), name="output")
 
 # --- INTEGRATED STITCHING LOGIC (from your image_processing.py) ---
 def stitch_and_process(image_paths, output_folder="output"):
