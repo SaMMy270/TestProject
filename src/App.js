@@ -1,122 +1,143 @@
 import React, { useState } from 'react';
-import RoomViewer from "./components/PhotoDesigner/RoomViewer";
-import './App.css'; // Import the new modern CSS
-
-const FIXED_WALLS = [
-  { id: 0, name: "Front Wall" },
-  { id: 1, name: "Right Wall" },
-  { id: 2, name: "Back Wall" },
-  { id: 3, name: "Left Wall" }
-];
-
-const COLOR_PRESETS = [
-  { name: 'Dark', color: '#1a1a1a' },
-  { name: 'Wood', color: '#5d4037' },
-  { name: 'Grey', color: '#757575' },
-  { name: 'Beige', color: '#d7ccc8' },
-];
+import AIUploadPage from './components/AI/AiUpload';
+import RoomViewer from "./components/AI/RoomViewer";
+import RoomSelector from "./components/customized/RoomSelector";
+import DimensionSetup from "./components/customized/DimensionSetup";
+import OpeningsSetup from "./components/customized/OpeningSetup";
+import Designer from "./components/Designer";
+import './components/customized/customized.css';
 
 function App() {
-  const [roomData, setRoomData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [ceilingHeight, setCeilingHeight] = useState(2.5);
-  const [floorColor, setFloorColor] = useState('#1a1a1a'); // NEW STATE
-
-  const [walls, setWalls] = useState(
-    FIXED_WALLS.map(w => ({ ...w, length: 3.0, files: [] }))
-  );
-
-  const handleGenerate = async () => {
-    setLoading(true);
-    const formData = new FormData();
-    walls.forEach(w => w.files.forEach(f => formData.append('files', f)));
-
-    try {
-      const res = await fetch('http://localhost:8000/process-room', { method: 'POST', body: formData });
-      const data = await res.json();
-      setRoomData({ ...data, walls, ceilingHeight });
-    } catch (err) {
-      alert("Backend Error: Check if server is running on localhost:8000");
-    } finally {
-      setLoading(false);
-    }
+  // Steps: 'CHOICE', 'AI_UPLOAD', 'AI_VALIDATE', 'SELECTOR', 'DIMENSIONS', 'OPENINGS', 'DESIGNER'
+  const [step, setStep] = useState('CHOICE');
+  const [mode, setMode] = useState(null); // 'AI' or 'CUSTOM'
+  const [roomData, setRoomData] = useState({ projectTitle: "Untitled Project", walls: [] });
+  const updateRoomData = (newData) => {
+    setRoomData(prev => ({ ...prev, ...newData }));
   };
 
+  // Helper to determine if we should show full-screen 3D
+  const isFullPage = step === 'AI_VALIDATE' || step === 'DESIGNER';
+  const handleConfirmRoom = () => {
+    // 1. We use the existing 'roomData' state (populated by AiUpload)
+    // 2. We FORMAT it so Designer.js can read it easily
+    const designerReadyData = {
+      ...roomData,
+      // Map AI 'results' to flat properties for Designer
+      length: roomData.results?.length || 5,
+      width: roomData.results?.breadth || 5,
+      height: roomData.ceilingHeight || 2.5,
+      panoramaUrl: roomData.panorama_url, // Ensure URL is passed
+      mode: 'AI'
+    };
+
+    // 3. Update state and move to Designer
+    setRoomData(designerReadyData);
+    setStep('DESIGNER');
+  };
   return (
-    <div className="main-container">
-      <div className="sidebar">
-        <h2 className="brand-logo">PlanPro 3D</h2>
+    <div className={`App ${isFullPage ? 'full-flow' : ''}`}>
 
-        {!roomData ? (
-          <div className="controls">
-            <div className="height-input">
-              <label>Ceiling Height (meters):</label>
-              <input type="number" step="0.1" value={ceilingHeight} onChange={e => setCeilingHeight(e.target.value)} />
+      {/* STEP 0: INITIAL CHOICE */}
+      {step === 'CHOICE' && (
+        <div className="choice-container">
+          <h2 className="brand-logo">PlanPro 3D</h2>
+          <h1>Choose Your Design Mode</h1>
+          <div className="choice-grid">
+            <div className="choice-card">
+              <h3>Manual Designer</h3>
+              <p>Build from scratch with custom shapes and dimensions.</p>
+              <button className="main-btn" onClick={() => { setMode('CUSTOM'); setStep('SELECTOR'); }}>
+                Fully Customize
+              </button>
             </div>
-
-            <div className="scroll-area">
-              {walls.map((wall, idx) => (
-                <div key={idx} className="wall-card">
-                  <div className="wall-header">
-                    <strong>{wall.name}</strong>
-                    <input type="number" step="0.1" placeholder="Length"
-                      onChange={e => { const u = [...walls]; u[idx].length = parseFloat(e.target.value) || 0; setWalls(u); }} />
-                  </div>
-                  <input type="file" multiple className="file-input" onChange={e => {
-                    const u = [...walls]; u[idx].files = Array.from(e.target.files); setWalls(u);
-                  }} />
-                </div>
-              ))}
-            </div>
-
-            <button onClick={handleGenerate} disabled={loading} className="main-btn">
-              {loading ? "Stitching Photos..." : "Generate 3D Room"}
-            </button>
-          </div>
-        ) : (
-          <div className="result-side">
-            <button onClick={() => setRoomData(null)} className="back-btn">⬅ Start New Room</button>
-
-            {/* NEW FLOOR COLOR SECTION */}
-            <div className="floor-selector">
-              <p className="section-label">Floor Style</p>
-              <div className="preset-grid">
-                {COLOR_PRESETS.map(p => (
-                  <button
-                    key={p.name}
-                    onClick={() => setFloorColor(p.color)}
-                    style={{ backgroundColor: p.color, border: floorColor === p.color ? '2px solid #2563eb' : '1px solid #ddd' }}
-                    className="color-chip"
-                    title={p.name}
-                  />
-                ))}
-              </div>
-              <div className="custom-color-row">
-                <span>Custom:</span>
-                <input type="color" value={floorColor} onChange={(e) => setFloorColor(e.target.value)} />
-              </div>
-            </div>
-
-            <div className="stats-card">
-              <p>Height: <strong>{ceilingHeight}m</strong></p>
-              <p>Walls: <strong>4</strong></p>
+            <div className="choice-card">
+              <h3>AI Image Based</h3>
+              <p>Upload room photos and let AI stitch your 3D environment.</p>
+              <button className="main-btn" onClick={() => { setMode('AI'); setStep('AI_UPLOAD'); }}>
+                Start AI Flow
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="viewer-container">
-        {roomData ? (
-          <RoomViewer data={roomData} floorColor={floorColor} />
-        ) : (
-          <div className="placeholder">
-            <div className="placeholder-icon">🏠</div>
-            <h3>Ready to start?</h3>
-            <p>Enter wall dimensions and upload photos <br /> to generate your 3D preview.</p>
+      {/* --- AI FLOW --- */}
+      {step === 'AI_UPLOAD' && (
+        <div className="main-container">
+          <AIUploadPage
+            onSuccess={(data) => { setRoomData(data); setStep('AI_VALIDATE'); }}
+            onBack={() => setStep('CHOICE')}
+          />
+          {/* Placeholder for the right side during upload */}
+          <div className="viewer-container">
+            <div className="placeholder">
+              <h3>Ready to start?</h3>
+              <p>Upload photos to generate your 3D preview.</p>
+            </div>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+
+      {step === 'AI_VALIDATE' && (
+        <div className="full-screen-viewer">
+          <div className="viewer-wrapper">
+            {/* These controls float ON TOP of the RoomViewer */}
+            <div className="validation-controls">
+              <button className="back-btn" onClick={() => setStep('AI_UPLOAD')}>
+                Try Again
+              </button>
+              <button className="main-btn" onClick={handleConfirmRoom}>
+                Looks Good! Add Furniture
+              </button>
+            </div>
+
+            <RoomViewer data={roomData} />
+          </div>
+        </div>
+      )
+      }
+
+      {/* --- CUSTOMIZED FLOW --- */}
+      {
+        step === 'SELECTOR' && (
+          <RoomSelector onSelect={(shape) => { updateRoomData({ shape }); setStep('DIMENSIONS'); }} />
+        )
+      }
+
+      {
+        step === 'DIMENSIONS' && (
+          <DimensionSetup
+            data={roomData}
+            onUpdate={updateRoomData}
+            onNext={() => setStep('OPENINGS')}
+            onBack={() => setStep('SELECTOR')}
+          />
+        )
+      }
+
+      {
+        step === 'OPENINGS' && (
+          <OpeningsSetup
+            data={roomData}
+            onUpdate={updateRoomData}
+            onNext={() => setStep('DESIGNER')}
+            onBack={() => setStep('DIMENSIONS')}
+          />
+        )
+      }
+
+      {/* --- SHARED FINAL STAGE --- */}
+      {/* --- SHARED FINAL STAGE --- */}
+      {step === 'DESIGNER' && (
+        <Designer
+          roomData={roomData}
+          mode={mode}  // This will now be 'AI' or 'CUSTOM'
+          onUpdate={updateRoomData}
+          onBack={() => setStep('CHOICE')}
+        />
+      )}
+    </div >
   );
 }
 

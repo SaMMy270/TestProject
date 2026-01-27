@@ -1,13 +1,11 @@
 import React, { Suspense, useMemo, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber"; // Added useThree here
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, useTexture, PerspectiveCamera, Grid } from "@react-three/drei";
 import * as THREE from "three";
 import './RoomViewer.css';
 
 // 1. WALL COMPONENT
-// 1. WALL COMPONENT (Updated to fix Black Wall issue)
 function Wall({ url, width, height, position, rotation, offset }) {
-  // useTexture handles crossOrigin: 'anonymous' automatically!
   const texture = useTexture(url);
 
   const wallTexture = useMemo(() => {
@@ -18,8 +16,6 @@ function Wall({ url, width, height, position, rotation, offset }) {
     t.offset.set(offset, 0);
     t.wrapS = THREE.RepeatWrapping;
     t.minFilter = THREE.LinearFilter;
-
-    // This tells the GPU to re-upload the image if it was previously "tainted"
     t.needsUpdate = true;
     return t;
   }, [texture, offset]);
@@ -32,7 +28,7 @@ function Wall({ url, width, height, position, rotation, offset }) {
   );
 }
 
-// 2. CAMERA LIGHT HELPER (Must be used inside Canvas)
+// 2. CAMERA LIGHT HELPER
 function CameraLight() {
   const { camera } = useThree();
   return <pointLight position={camera.position} intensity={1.5} />;
@@ -43,6 +39,8 @@ export default function RoomViewer({ data, floorColor }) {
   const [mode, setMode] = useState("orbit");
   const { walls, ceilingHeight, panorama_url } = data;
   const h = parseFloat(ceilingHeight);
+
+  // --- DELETED THE UNUSED 'isDesignerOpen' LINE HERE ---
 
   const roomWidth = walls[0].length || 3;
   const roomDepth = walls[1].length || 3;
@@ -83,7 +81,7 @@ export default function RoomViewer({ data, floorColor }) {
           />
 
           {/* LIGHTING SETUP */}
-          <CameraLight /> {/* This light follows the camera like a headlamp */}
+          <CameraLight />
           <ambientLight intensity={1.2} />
           <directionalLight position={[10, 10, 10]} intensity={1.0} />
           <pointLight position={[0, h - 0.2, 0]} intensity={1.5} color="#fffaf0" />
