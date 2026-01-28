@@ -6,7 +6,7 @@ import FurniturePrimitive from "./customized/FurniturePrimitive";
 import { exportSceneToGLB } from "./../utils/exporter";
 
 // --- 1. DEFINE TEXTURED WALL HERE (At the top level) ---
-function TexturedWall({ url, width, height, position, rotation, offsetIndex }) {
+function TexturedWall({ url, width, height, position, rotation, offsetIndex, visible = true }) {
     const texture = useTexture(url);
 
     const wallTexture = useMemo(() => {
@@ -21,9 +21,14 @@ function TexturedWall({ url, width, height, position, rotation, offsetIndex }) {
     }, [texture, offsetIndex]);
 
     return (
-        <mesh position={position} rotation={rotation}>
+        <mesh position={position} rotation={rotation} visible={visible}>
             <planeGeometry args={[width, height]} />
-            <meshStandardMaterial map={wallTexture} side={THREE.DoubleSide} />
+            <meshStandardMaterial
+                map={wallTexture}
+                side={THREE.DoubleSide}
+                transparent={true}
+                opacity={visible ? 1 : 0.2} // Optional: Make it semi-transparent instead of fully hidden
+            />
         </mesh>
     );
 }
@@ -65,7 +70,34 @@ function SceneContent({
     const [hoveredWall, setHoveredWall] = useState(null);
     const [hasInteracted, setHasInteracted] = useState(false);
 
-    // Export Logic
+    // --- 1. CAMERA LOGIC ---
+    const [viewTarget, setViewTarget] = useState({
+        pos: new THREE.Vector3(8, 8, 8),
+        look: new THREE.Vector3(0, 0, 0)
+    });
+
+    // Reset interaction when room data or view mode changes
+    useEffect(() => {
+        setHasInteracted(false);
+    }, [roomData, viewMode]);
+
+    useFrame((state) => {
+        if (!hasInteracted) {
+            // Smoothly move camera and lookAt target
+            state.camera.position.lerp(viewTarget.pos, 0.1);
+            if (controlsRef.current) {
+                controlsRef.current.target.lerp(viewTarget.look, 0.1);
+                controlsRef.current.update();
+            }
+
+            // If we are close enough to the target, release control to user
+            if (state.camera.position.distanceTo(viewTarget.pos) < 0.1) {
+                setHasInteracted(true);
+            }
+        }
+    });
+
+    // --- 2. EXPORT LOGIC ---
     useEffect(() => {
         if (shouldExport) {
             const performExport = async () => {
@@ -84,16 +116,10 @@ function SceneContent({
         }
     }, [shouldExport, scene, roomData.projectTitle, onExportComplete]);
 
-    // Camera Logic
-    const [viewTarget, setViewTarget] = useState({
-        pos: new THREE.Vector3(8, 8, 8),
-        look: new THREE.Vector3(0, 0, 0)
-    });
-
+    // --- 3. GEOMETRY CALCULATIONS ---
     const { shape, dimensions, openings = [] } = roomData || {};
     const { length: L = 6, width: W = 6, notchL = 2, notchW = 2 } = dimensions || {};
 
-    // Geometry Calculation
     const pointsData = useMemo(() => {
         const hL = L / 2;
         const hW = W / 2;
@@ -150,11 +176,10 @@ function SceneContent({
         });
     }, [pointsData, openings]);
 
-    // View Updates
+    // Update viewTarget based on viewMode
     useEffect(() => {
         if (isPlacementMode) return;
-        setHasInteracted(false);
-        const offsetDist = 8;
+        const offsetDist = 5;
 
         if (viewMode === 'TOP') {
             setViewTarget({ pos: new THREE.Vector3(0, 15, 0), look: new THREE.Vector3(0, 0, 0) });
@@ -180,17 +205,7 @@ function SceneContent({
         }
     }, [viewMode, wallData, isPlacementMode]);
 
-    useFrame(() => {
-        if (!hasInteracted) {
-            camera.position.lerp(viewTarget.pos, 0.1);
-            if (controlsRef.current) {
-                controlsRef.current.target.lerp(viewTarget.look, 0.1);
-                controlsRef.current.update();
-            }
-        }
-    });
-
-    // Texture Loading
+    // --- 4. ASSETS & HANDLERS ---
     const textureUrls = {
         wood: "https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/floors/FloorsCheckerboard_S_Diffuse.jpg",
         tiles: "https://threejs.org/examples/textures/grid.png"
@@ -223,10 +238,13 @@ function SceneContent({
 
     return (
         <>
-            <OrbitControls ref={controlsRef} makeDefault onStart={() => setHasInteracted(true)} />
+            <OrbitControls
+                ref={controlsRef}
+                makeDefault
+                onStart={() => setHasInteracted(true)}
+            />
             <ambientLight intensity={0.7} />
             <pointLight position={[10, 10, 10]} intensity={1.5} />
-
             <Grid ref={gridRef} infiniteGrid cellSize={0.5} sectionSize={1} fadeDistance={30} />
 
             {floorShape && (
@@ -240,26 +258,60 @@ function SceneContent({
                 </mesh>
             )}
 
-            {/* --- LOGIC SWITCH: AI PHOTO vs MANUAL WALLS --- */}
             {roomData.panoramaUrl ? (
-                // OPTION A: AI MODE (Photo Walls)
                 <group>
-                    <TexturedWall url={roomData.panoramaUrl} width={W} height={2.5} position={[0, 1.25, -L / 2]} rotation={[0, 0, 0]} offsetIndex={0} />
-                    <TexturedWall url={roomData.panoramaUrl} width={L} height={2.5} position={[W / 2, 1.25, 0]} rotation={[0, -Math.PI / 2, 0]} offsetIndex={1} />
-                    <TexturedWall url={roomData.panoramaUrl} width={W} height={2.5} position={[0, 1.25, L / 2]} rotation={[0, Math.PI, 0]} offsetIndex={2} />
-                    <TexturedWall url={roomData.panoramaUrl} width={L} height={2.5} position={[-W / 2, 1.25, 0]} rotation={[0, Math.PI / 2, 0]} offsetIndex={3} />
-                </group>
+                    {
+                        [
+                            { pos: [0, 1.25, -L / 2], rot: [0, 0, 0], idx: 0, w: W },         // Front
+                            { pos: [W / 2, 1.25, 0], rot: [0, -Math.PI / 2, 0], idx: 1, w: L }, // Right
+                            { pos: [0, 1.25, L / 2], rot: [0, Math.PI, 0], idx: 2, w: W },    // Back
+                            { pos: [-W / 2, 1.25, 0], rot: [0, Math.PI / 2, 0], idx: 3, w: L }, // Left
+                        ].map((wDef, i) => {
+                            let isHidden = false;
+                            if (isPreviewActive && viewMode.startsWith('WALL_')) {
+                                // Calculate the direction the camera is currently looking
+                                const viewDir = new THREE.Vector3().subVectors(viewTarget.look, viewTarget.pos).normalize();
+
+                                // Calculate direction from camera to this specific wall's center
+                                const wallPos = new THREE.Vector3(...wDef.pos);
+                                const dirToWall = new THREE.Vector3().subVectors(wallPos, camera.position).normalize();
+
+                                // Use Dot Product to see if the wall is "blocking" the view (between camera and center)
+                                if (viewDir.dot(dirToWall) < 0.1) {
+                                    isHidden = true;
+                                }
+                            }
+
+                            return (
+                                <TexturedWall
+                                    key={i}
+                                    url={roomData.panoramaUrl}
+                                    width={wDef.w}
+                                    height={2.5}
+                                    position={wDef.pos}
+                                    rotation={wDef.rot}
+                                    offsetIndex={wDef.idx}
+                                    visible={!isHidden}
+                                />
+                            );
+                        })
+                    }
+                </group >
             ) : (
-                // OPTION B: MANUAL MODE
                 wallData.map((wall, i) => {
                     const isHighlitByParent = highlightedWallType === wall.type;
                     const isHoveredLocal = hoveredWall === i;
 
                     let isHidden = false;
                     if (isPreviewActive && viewMode.startsWith('WALL_')) {
+                        
                         const viewDir = new THREE.Vector3().subVectors(viewTarget.look, viewTarget.pos).normalize();
-                        const wallPos = new THREE.Vector3(wall.staticCenter.x, 1.25, wall.staticCenter.y);
-                        const dirToWall = new THREE.Vector3().subVectors(wallPos, camera.position).normalize();
+
+                        
+                        const wallCenter = new THREE.Vector3(wall.staticCenter.x, 1.25, wall.staticCenter.y);
+                        const dirToWall = new THREE.Vector3().subVectors(wallCenter, camera.position).normalize();
+
+                        // If the camera is "looking through" this wall to see the room, hide it
                         if (viewDir.dot(dirToWall) < 0.1) isHidden = true;
                     }
 
@@ -270,8 +322,10 @@ function SceneContent({
                             key={i}
                             position={[wall.staticCenter.x, 0, wall.staticCenter.y]}
                             rotation={[0, -wall.angle, 0]}
+                            
                             visible={!isHidden}
                         >
+                            
                             <mesh
                                 visible={false}
                                 onClick={(e) => { e.stopPropagation(); if (isPlacementMode) onWallClick(i); }}
@@ -280,32 +334,40 @@ function SceneContent({
                             >
                                 <planeGeometry args={[wall.dist, 2.5]} />
                             </mesh>
+
                             {!wall.opening ? (
                                 <mesh position={[0, 1.25, 0]}>
                                     <planeGeometry args={[wall.dist, 2.5]} />
-                                    <meshStandardMaterial color={finalColor} side={THREE.DoubleSide} />
+                                    <meshStandardMaterial
+                                        color={finalColor}
+                                        side={THREE.DoubleSide}
+                                        transparent={isHidden}
+                                        opacity={isHidden ? 0.2 : 1} // Shows a ghost wall instead of complete deletion
+                                    />
                                 </mesh>
                             ) : (
-                                <WallAperture wall={wall} color={finalColor} />
+                                <WallAperture wall={wall} color={finalColor} isHidden={isHidden} />
                             )}
                         </group>
                     );
                 })
             )}
 
-            {furnitureList.map((it, idx) => (
-                <FurniturePrimitive
-                    key={it.id}
-                    item={it}
-                    index={idx}
-                    isSelected={selectedIndex === idx}
-                    furnitureList={furnitureList}
-                    setFurnitureList={setFurnitureList}
-                    setSelectedIndex={setSelectedIndex}
-                    points={pointsData.map(p => p.pos)}
-                    controlsRef={controlsRef}
-                />
-            ))}
+            {
+                furnitureList.map((it, idx) => (
+                    <FurniturePrimitive
+                        key={it.id}
+                        item={it}
+                        index={idx}
+                        isSelected={selectedIndex === idx}
+                        furnitureList={furnitureList}
+                        setFurnitureList={setFurnitureList}
+                        setSelectedIndex={setSelectedIndex}
+                        points={pointsData.map(p => p.pos)}
+                        controlsRef={controlsRef}
+                    />
+                ))
+            }
         </>
     );
 }

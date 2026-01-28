@@ -148,7 +148,7 @@ export default function Designer({ roomData, mode, onUpdate, onBack }) {
 
                 <section className="canvas-wrapper">
                     <Room
-                        // --- FIX IS HERE: Use roomData.panoramaUrl ---
+                     
                         panoramaUrl={roomData.panoramaUrl} 
                         
                         roomData={roomData}
